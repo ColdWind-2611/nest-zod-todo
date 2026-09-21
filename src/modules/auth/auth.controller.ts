@@ -17,6 +17,7 @@ import {
   type JwtPayload,
 } from '../../common/schemas/jwt.schema.js';
 import { BEARER_AUTH_NAME } from '../../config/swagger.config.js';
+import { seconds, Throttle } from '@nestjs/throttler';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -45,6 +46,9 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({
+    default: { limit: 5, ttl: seconds(60), blockDuration: seconds(300) },
+  })
   @HttpCode(200)
   @Public()
   @ApiOperation({

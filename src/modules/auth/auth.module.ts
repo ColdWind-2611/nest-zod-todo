@@ -7,6 +7,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { RoleGuard } from '../../common/guards/role.guard.js';
 import { Env } from '../../config/env.schema.js';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -22,6 +23,10 @@ import { Env } from '../../config/env.schema.js';
   ],
   providers: [
     AuthService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: AuthGuard, // 在 AuthModule 作用域，JwtService 就在这里注册的

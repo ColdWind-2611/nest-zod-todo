@@ -1,6 +1,6 @@
 # Stage 2 · 多用户 Todo API
 
-NestJS v12 + Prisma 7 + Zod 写的一个完整 CRUD 服务：多用户、JWT 鉴权、RBAC，配 48 条测试。
+NestJS v12 + Prisma 7 + Zod 写的一个完整 CRUD 服务：多用户、JWT 鉴权、RBAC、helmet/CORS/限流，配 64 条测试。
 
 > 这份 README 面向"第一次拿到这个仓库、想把它跑起来"的人。
 > 想理解**为什么**这么写，看下一节的「四处分歧」—— 这个项目的设计取舍都收在那张表里。
@@ -78,6 +78,43 @@ pnpm start:dev
 
 ---
 
+## 安全
+
+三件事都在 `src/config/app.setup.ts` 的 `configureApp(app)` 里 —— 和全局管道同一个理由：**它必须是 e2e 跑得到的地方**（e2e 不执行 `main.ts`）。
+
+| 机制 | 配置 | 说明 |
+| --- | --- | --- |
+| **helmet** | 无需配置 | 全局加 `X-Content-Type-Options` / `X-Frame-Options` / HSTS 等。CSP 收紧到 `default-src 'self'`，**只有 `/docs` 例外** |
+| **CORS 白名单** | `CORS_ORIGINS` | 逗号分隔的 origin 列表，在 `env.schema.ts` 里被拆成**数组**再逐个校验成合法 URL |
+| **限流** | `RATE_LIMIT_ENABLED` | 默认 100 次/60 秒；`POST /auth/login` 单独收紧到 5 次/60 秒 + 封禁 300 秒 |
+
+### `/docs` 为什么必须放宽 CSP
+
+CSP 会拦掉内联脚本，而 Swagger UI 靠内联脚本渲染 —— 不放宽就是白屏。放宽的**只有 CSP 一项**，helmet 其余的头照常（所以 `/docs` 上仍有 `nosniff`）。
+
+> ⚠️ **顺序是承重的**：`setupSwagger` 内部是 `httpAdapter.get('/docs', ...)`，**调用那一刻**就注册了 express 路由，而它的 handler 只 `res.send()`、不调 `next()`。express 按注册顺序匹配 —— 所以安全中间件必须注册在 `setupSwagger` **之前**，否则 `/docs` 会先被 swagger 的 handler 吃掉，那个 `startsWith('/docs')` 分支就成了**死代码**（`/docs` 上一个 helmet 头都没有）。
+> 这个 bug 极其隐蔽：`/docs` 照常打得开、别的路由照常有头、手工点两下 UI 什么都看不出来。由 `test/docs.e2e-spec.ts` 守着。
+
+### `CORS_ORIGINS` 为什么必须是数组
+
+`cors` 对**字符串** origin 走 "fixed origin" 分支：**不比对请求的 `Origin`，直接把它当 `Access-Control-Allow-Origin` 发出去**。所以 `CORS_ORIGINS="a,b"` 会让每个响应带上 `ACAO: a,b` —— 非法值，浏览器一律拒绝，**白名单内的合法前端和外部站点一起被拒**。
+
+只有数组/函数/RegExp 才会反射请求的 origin、并在不匹配时**不下发** ACAO。所以拆分和校验放在 `env.schema.ts` 里，类型是 `string[]` —— 谁再把它拼回字符串就是编译错误。
+
+> `CORS_ORIGINS="*"` 会**启动失败**（通不过 `.url()`）。这是有意的：通配符在这里只会静默变成"谁都不许"或"谁都可以"，两种都不是你想要的。
+
+### `RATE_LIMIT_ENABLED` 怎么关
+
+关掉的**唯一正当理由**是前面已经有一道真在限流的关卡（Nginx `limit_req` / WAF / API 网关）。关掉之后 `POST /auth/login` 的暴力破解防护归零 —— **只有在反代那侧配了同等限流时才允许关**。
+
+取值用 `z.stringbool()`，认 `true/1/yes/on/y/enabled` 与 `false/0/no/off/n/disabled`（大小写不敏感），写别的**启动报错**。
+
+> ⚠️ 别用 `z.coerce.boolean()` 换掉它 —— 它内部是 `Boolean(v)`，而环境变量永远是字符串，`Boolean('false') === true`，配 `"false"` 反而把限流**打开**。探针见 `scratch/probe-stringbool-vs-coerce.ts`。
+
+**限流是按路由计数的，不是全局总额度。** `sha256(控制器-处理器-限流器-来源)` 才是计数键，所以"100 次/60 秒"是**每个接口各 100 次**。把请求分散到不同路由就能绕开它 —— 它防的是误用和单点爆破，不是分布式爬取（那需要共享存储 + 网关层）。
+
+---
+
 ## 接口一览
 
 | 方法 | 路径 | 权限 | 说明 |
@@ -114,7 +151,7 @@ pnpm start:dev
 
 ```bash
 pnpm test        # 单测（23 条）—— 不需要数据库，纯逻辑 + mock
-pnpm test:e2e    # e2e （25 条）—— 需要 Postgres 起着
+pnpm test:e2e    # e2e （41 条）—— 需要 Postgres 起着
 ```
 
 **`test:e2e` 是冒号不是空格。** `pnpm test e2e`（空格）是把 `e2e` 当参数传给单测配置，
