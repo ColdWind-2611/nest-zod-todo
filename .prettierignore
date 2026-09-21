@@ -1,0 +1,8 @@
+# Prisma 生成物 —— 不是我们的源码，格式化只会制造噪音 diff
+# （而且下次 prisma generate 又会覆盖回去）
+/src/prisma/generated
+
+# 构建产物
+/dist
+/coverage
+/node_modules

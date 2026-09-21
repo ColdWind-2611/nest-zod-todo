@@ -1,0 +1,90 @@
+# compiled output
+/dist
+/node_modules
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IDE / AI 工具的本地配置目录。
+# 现在是空目录（git 不跟踪空目录），但将来一旦出现文件
+# —— 比如 .claude/settings.local.json 常含本机绝对路径和权限白名单 ——
+# 就会跟着上仓库。预防性挡住。
+.claude/
+.windsurf/
+
+# dotenv environment variable files
+#
+# ⚠️ 这里**不能**用脚手架默认的逐条列举（`.env` + `.env.*.local`，见 git 历史）：
+# 那几行只盖住 `.env` 和 `*.local` 后缀，而本项目的 envFilePath 用的是
+# `.env.<环境>` 这套命名 —— 于是 `.env.development` / `.env.production`
+# 一个都不在忽略范围内，`git add -A` 会把它们直接提交上去。
+# （脚手架作者的假设是"你只用 .env 和 .env.local"，跟这套方案对不上。）
+#
+# 一刀切挡掉所有 .env*；唯一例外是 `.env.example` ——
+# 它是**形状说明书**，必须提交，否则 clone 下来的人不知道要配哪些变量。
+# `!` 取反必须写在 `.env*` **之后**，顺序反了不生效。
+.env*
+!.env.example
+
+# temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Prisma 客户端为生成物，可随时 `prisma generate` 重建
+# （⚠️ 所以 package.json 里必须有 `postinstall: prisma generate`，
+#   否则 clone 下来 pnpm install 完仍然缺 client，start:dev 直接报模块找不到）
+/src/prisma/generated
+
+# TS 增量编译缓存：机器相关、每次编译都变，纯噪音
+*.tsbuildinfo
+
+# 一次性探针/试验脚本。规矩是「跑完就该删」，但这几个有留存价值
+# —— 它们是"某个结论可复现"的凭据（比如 z.codec 那个），
+# 所以留在这儿但不进仓库。
+/scratch
+
+# 学习文档（执行稿 / 复盘 / 总结）不进仓库：那是**个人的学习轨迹**，
+# 混在源码里只会让 clone 下来的人以为读代码之前得先读几十万字。
+# 只挡 src/ 顶层，不碰子目录里可能出现的 md（比如将来加 docs/）。
+# ⚠️ 忽略之后，README / .env.example / 代码注释里都**不能**再引用这些文件 ——
+#    让人去找一个仓库里不存在的文件，是 clone 下来最容易踩的坑。
+/src/*.md

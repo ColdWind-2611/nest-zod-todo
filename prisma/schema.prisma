@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  // 生成物必须落在 src/ 内：Nest 用 tsc 把 src/ 编到 dist/，只有同属编译图，
+  // 运行时相对导入才成立（放项目根或 node_modules 外会让 dist 里找不到）。
+  output   = "../src/prisma/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String                      // 存 bcrypt hash，绝不是明文（Session 5）
+  role      Role     @default(USER)     // Session 7 RBAC 用
+  createdAt DateTime @default(now())
+  todos     Todo[]
+}
+
+model Todo {
+  id        Int      @id @default(autoincrement())
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ownerId   Int
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@index([ownerId])                     // 按 owner 查询是高频路径，建索引
+}
